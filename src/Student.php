@@ -1,58 +1,25 @@
 <?php
 
-// Student class to hold student details
-class Student
+require_once __DIR__ . '/Person.php';
+
+// Student class inherits from Person
+class Student extends Person
 {
-    private string $id;
-    private string $name;
-    private string $email;
-    private string $course;
-    private float $grade;
+    protected string $course;
+    protected float $grade;
 
     public function __construct(string $id, string $name, string $email, string $course, float $grade)
     {
-        $this->id = trim($id);
-        $this->name = trim($name);
-        $this->email = trim($email);
+        // Call parent Person constructor
+        parent::__construct($id, $name, $email);
         $this->course = trim($course);
         $this->grade = $grade;
     }
 
-    // Getters
-    public function getId(): string
-    {
-        return $this->id;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function getEmail(): string
-    {
-        return $this->email;
-    }
-
+    // Getters and Setters
     public function getCourse(): string
     {
         return $this->course;
-    }
-
-    public function getGrade(): float
-    {
-        return $this->grade;
-    }
-
-    // Setters
-    public function setName(string $name): void
-    {
-        $this->name = trim($name);
-    }
-
-    public function setEmail(string $email): void
-    {
-        $this->email = trim($email);
     }
 
     public function setCourse(string $course): void
@@ -60,8 +27,18 @@ class Student
         $this->course = trim($course);
     }
 
+    public function getGrade(): float
+    {
+        return $this->grade;
+    }
+
     public function setGrade(float $grade): void
     {
         $this->grade = $grade;
+    }
+
+    public function getType(): string
+    {
+        return 'Regular';
     }
 }

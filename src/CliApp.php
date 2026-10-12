@@ -1,16 +1,17 @@
 <?php
 
 require_once __DIR__ . '/Student.php';
-require_once __DIR__ . '/StudentManager.php';
+require_once __DIR__ . '/GraduateStudent.php';
+require_once __DIR__ . '/StudentRepositoryInterface.php';
 
-// CliApp class to handle menu and user input
+// CliApp class to handle menu and user interactions
 class CliApp
 {
-    private StudentManager $manager;
+    private StudentRepositoryInterface $repository;
 
-    public function __construct(StudentManager $manager)
+    public function __construct(StudentRepositoryInterface $repository)
     {
-        $this->manager = $manager;
+        $this->repository = $repository;
     }
 
     public function run(): void
@@ -73,9 +74,13 @@ class CliApp
     private function handleAddStudent(): void
     {
         echo "--- Add Student ---" . PHP_EOL;
+        echo "Select Student Type:" . PHP_EOL;
+        echo " [1] Regular Student" . PHP_EOL;
+        echo " [2] Graduate Student" . PHP_EOL;
+        $typeChoice = $this->prompt("Choose (1 or 2): ");
 
         $id = $this->promptRequired("Enter Student ID: ");
-        if ($this->manager->findById($id)) {
+        if ($this->repository->findById($id)) {
             echo "Error: Student ID already exists." . PHP_EOL;
             return;
         }
@@ -85,9 +90,15 @@ class CliApp
         $course = $this->promptRequired("Enter Course: ");
         $grade = $this->promptFloat("Enter Grade (0-100): ", 0.0, 100.0);
 
-        $student = new Student($id, $name, $email, $course, $grade);
-        if ($this->manager->addStudent($student)) {
-            echo "Student added successfully." . PHP_EOL;
+        if ($typeChoice === '2') {
+            $researchTopic = $this->promptRequired("Enter Research Topic: ");
+            $student = new GraduateStudent($id, $name, $email, $course, $grade, $researchTopic);
+        } else {
+            $student = new Student($id, $name, $email, $course, $grade);
+        }
+
+        if ($this->repository->add($student)) {
+            echo "Student (" . $student->getType() . ") added successfully." . PHP_EOL;
         } else {
             echo "Failed to add student." . PHP_EOL;
         }
@@ -96,15 +107,15 @@ class CliApp
     private function handleViewAllStudents(): void
     {
         echo "--- All Students ---" . PHP_EOL;
-        $students = $this->manager->getAllStudents();
+        $students = $this->repository->getAll();
         $this->renderStudentTable($students);
     }
 
     private function handleSearchStudent(): void
     {
         echo "--- Search Student ---" . PHP_EOL;
-        $query = $this->promptRequired("Enter keyword (ID, Name, or Course): ");
-        $results = $this->manager->search($query);
+        $query = $this->promptRequired("Enter keyword (ID, Name, Course, or Topic): ");
+        $results = $this->repository->search($query);
 
         if (empty($results)) {
             echo "No students found matching '$query'." . PHP_EOL;
@@ -119,14 +130,19 @@ class CliApp
     {
         echo "--- Update Student ---" . PHP_EOL;
         $id = $this->promptRequired("Enter Student ID to update: ");
-        $student = $this->manager->findById($id);
+        $student = $this->repository->findById($id);
 
         if (!$student) {
             echo "Student not found." . PHP_EOL;
             return;
         }
 
-        echo "Current: " . $student->getName() . " | " . $student->getEmail() . " | " . $student->getCourse() . " | " . $student->getGrade() . PHP_EOL;
+        echo "Type: " . $student->getType() . PHP_EOL;
+        echo "Current: " . $student->getName() . " | " . $student->getEmail() . " | " . $student->getCourse() . " | " . $student->getGrade();
+        if ($student instanceof GraduateStudent) {
+            echo " | Topic: " . $student->getResearchTopic();
+        }
+        echo PHP_EOL;
         echo "(Press Enter to keep current value)" . PHP_EOL;
 
         $name = $this->prompt("New Name: ");
@@ -143,12 +159,21 @@ class CliApp
             }
         }
 
-        $this->manager->updateStudent(
+        $researchTopic = null;
+        if ($student instanceof GraduateStudent) {
+            $topicInput = $this->prompt("New Research Topic: ");
+            if (trim($topicInput) !== '') {
+                $researchTopic = $topicInput;
+            }
+        }
+
+        $this->repository->update(
             $id,
             $name !== '' ? $name : null,
             $email !== '' ? $email : null,
             $course !== '' ? $course : null,
-            $grade
+            $grade,
+            $researchTopic
         );
 
         echo "Student updated successfully." . PHP_EOL;
@@ -158,7 +183,7 @@ class CliApp
     {
         echo "--- Delete Student ---" . PHP_EOL;
         $id = $this->promptRequired("Enter Student ID to delete: ");
-        $student = $this->manager->findById($id);
+        $student = $this->repository->findById($id);
 
         if (!$student) {
             echo "Student not found." . PHP_EOL;
@@ -167,7 +192,7 @@ class CliApp
 
         $confirm = strtolower($this->prompt("Are you sure you want to delete {$student->getName()}? (y/n): "));
         if ($confirm === 'y' || $confirm === 'yes') {
-            $this->manager->deleteStudent($id);
+            $this->repository->delete($id);
             echo "Student deleted." . PHP_EOL;
         } else {
             echo "Action cancelled." . PHP_EOL;
@@ -177,12 +202,14 @@ class CliApp
     private function handleViewStatistics(): void
     {
         echo "--- Statistics ---" . PHP_EOL;
-        $stats = $this->manager->getStatistics();
+        $stats = $this->repository->getStatistics();
 
-        echo "Total Students : " . $stats['total'] . PHP_EOL;
-        echo "Average Grade  : " . $stats['averageGrade'] . PHP_EOL;
-        echo "Highest Grade  : " . $stats['highestGrade'] . PHP_EOL;
-        echo "Lowest Grade   : " . $stats['lowestGrade'] . PHP_EOL;
+        echo "Total Students    : " . $stats['total'] . PHP_EOL;
+        echo "Regular Students  : " . $stats['regularCount'] . PHP_EOL;
+        echo "Graduate Students : " . $stats['graduateCount'] . PHP_EOL;
+        echo "Average Grade     : " . $stats['averageGrade'] . PHP_EOL;
+        echo "Highest Grade     : " . $stats['highestGrade'] . PHP_EOL;
+        echo "Lowest Grade      : " . $stats['lowestGrade'] . PHP_EOL;
     }
 
     private function renderStudentTable(array $students): void
@@ -192,21 +219,25 @@ class CliApp
             return;
         }
 
-        $mask = "| %-8s | %-20s | %-25s | %-18s | %-6s |" . PHP_EOL;
-        $line = "+----------+----------------------+---------------------------+--------------------+--------+";
+        $mask = "| %-6s | %-10s | %-20s | %-24s | %-18s | %-6s | %-25s |" . PHP_EOL;
+        $line = "+--------+------------+----------------------+--------------------------+--------------------+--------+---------------------------+";
 
         echo $line . PHP_EOL;
-        printf($mask, "ID", "Name", "Email", "Course", "Grade");
+        printf($mask, "ID", "Type", "Name", "Email", "Course", "Grade", "Research Topic");
         echo $line . PHP_EOL;
 
         foreach ($students as $student) {
+            $topic = ($student instanceof GraduateStudent) ? $student->getResearchTopic() : "-";
+
             printf(
                 $mask,
                 $student->getId(),
-                mb_strimwidth($student->getName(), 0, 20, "..."),
-                mb_strimwidth($student->getEmail(), 0, 25, "..."),
-                mb_strimwidth($student->getCourse(), 0, 18, "..."),
-                number_format($student->getGrade(), 1)
+                $student->getType(),
+                $student->getName(),
+                $student->getEmail(),
+                $student->getCourse(),
+                $student->getGrade(),
+                $topic
             );
         }
         echo $line . PHP_EOL;

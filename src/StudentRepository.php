@@ -1,56 +1,56 @@
 <?php
 
 require_once __DIR__ . '/Student.php';
+require_once __DIR__ . '/GraduateStudent.php';
+require_once __DIR__ . '/StudentRepositoryInterface.php';
 
-// StudentManager class to handle array operations
-class StudentManager
+// StudentRepository implements the repository interface with in-memory storage
+class StudentRepository implements StudentRepositoryInterface
 {
     private array $students = [];
 
     public function __construct()
     {
-        // Add sample students for testing
-        $this->addStudent(new Student('S101', 'Alice Johnson', 'alice@example.com', 'Computer Science', 88.5));
-        $this->addStudent(new Student('S102', 'Bob Smith', 'bob@example.com', 'Information Tech', 76.0));
-        $this->addStudent(new Student('S103', 'Charlie Brown', 'charlie@example.com', 'Data Science', 92.3));
+        // In-memory array storage
+        $this->students = [];
     }
 
-    // Add a new student
-    public function addStudent(Student $student): bool
+    public function add(Student $student): bool
     {
         if (isset($this->students[$student->getId()])) {
-            return false; // ID already exists
+            return false;
         }
 
         $this->students[$student->getId()] = $student;
         return true;
     }
 
-    // Get all students
-    public function getAllStudents(): array
+    public function getAll(): array
     {
         return array_values($this->students);
     }
 
-    // Find student by ID
     public function findById(string $id): ?Student
     {
         $id = trim($id);
         return $this->students[$id] ?? null;
     }
 
-    // Search students by keyword (ID, name, or course)
     public function search(string $query): array
     {
         $query = strtolower(trim($query));
         $results = [];
 
         foreach ($this->students as $student) {
-            if (
-                str_contains(strtolower($student->getName()), $query) ||
-                str_contains(strtolower($student->getId()), $query) ||
-                str_contains(strtolower($student->getCourse()), $query)
-            ) {
+            $matched = str_contains(strtolower($student->getName()), $query) ||
+                       str_contains(strtolower($student->getId()), $query) ||
+                       str_contains(strtolower($student->getCourse()), $query);
+
+            if ($student instanceof GraduateStudent && str_contains(strtolower($student->getResearchTopic()), $query)) {
+                $matched = true;
+            }
+
+            if ($matched) {
                 $results[] = $student;
             }
         }
@@ -58,8 +58,7 @@ class StudentManager
         return $results;
     }
 
-    // Update student details
-    public function updateStudent(string $id, ?string $name, ?string $email, ?string $course, ?float $grade): bool
+    public function update(string $id, ?string $name, ?string $email, ?string $course, ?float $grade, ?string $researchTopic = null): bool
     {
         $student = $this->findById($id);
         if (!$student) {
@@ -78,12 +77,14 @@ class StudentManager
         if ($grade !== null) {
             $student->setGrade($grade);
         }
+        if ($student instanceof GraduateStudent && $researchTopic !== null && trim($researchTopic) !== '') {
+            $student->setResearchTopic($researchTopic);
+        }
 
         return true;
     }
 
-    // Delete a student by ID
-    public function deleteStudent(string $id): bool
+    public function delete(string $id): bool
     {
         $id = trim($id);
         if (isset($this->students[$id])) {
@@ -94,7 +95,6 @@ class StudentManager
         return false;
     }
 
-    // Calculate class statistics
     public function getStatistics(): array
     {
         $total = count($this->students);
@@ -103,20 +103,32 @@ class StudentManager
                 'total' => 0,
                 'averageGrade' => 0,
                 'highestGrade' => 0,
-                'lowestGrade' => 0
+                'lowestGrade' => 0,
+                'regularCount' => 0,
+                'graduateCount' => 0
             ];
         }
 
         $grades = [];
+        $regularCount = 0;
+        $graduateCount = 0;
+
         foreach ($this->students as $student) {
             $grades[] = $student->getGrade();
+            if ($student instanceof GraduateStudent) {
+                $graduateCount++;
+            } else {
+                $regularCount++;
+            }
         }
 
         return [
             'total' => $total,
             'averageGrade' => round(array_sum($grades) / $total, 2),
             'highestGrade' => max($grades),
-            'lowestGrade' => min($grades)
+            'lowestGrade' => min($grades),
+            'regularCount' => $regularCount,
+            'graduateCount' => $graduateCount
         ];
     }
 }
