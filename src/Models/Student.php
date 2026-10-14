@@ -10,13 +10,11 @@ class Student extends Person
 
     public function __construct(string $id, string $name, string $email, string $course, float $grade)
     {
-        // Call parent Person constructor
         parent::__construct($id, $name, $email);
         $this->course = trim($course);
         $this->grade = $grade;
     }
 
-    // Getters and Setters
     public function getCourse(): string
     {
         return $this->course;

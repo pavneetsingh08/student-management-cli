@@ -9,7 +9,6 @@ class GraduateStudent extends Student
 
     public function __construct(string $id, string $name, string $email, string $course, float $grade, string $researchTopic)
     {
-        // Call parent Student constructor
         parent::__construct($id, $name, $email, $course, $grade);
         $this->researchTopic = trim($researchTopic);
     }
@@ -24,7 +23,6 @@ class GraduateStudent extends Student
         $this->researchTopic = trim($researchTopic);
     }
 
-    // Override getType method
     public function getType(): string
     {
         return 'Graduate';

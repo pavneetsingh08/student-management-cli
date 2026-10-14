@@ -14,7 +14,6 @@ class Person
         $this->email = trim($email);
     }
 
-    // Getters
     public function getId(): string
     {
         return $this->id;
@@ -30,7 +29,6 @@ class Person
         return $this->email;
     }
 
-    // Setters
     public function setName(string $name): void
     {
         $this->name = trim($name);

@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Student.php';
+require_once __DIR__ . '/../Models/Student.php';
 
 // Interface defining repository methods for students
 interface StudentRepositoryInterface

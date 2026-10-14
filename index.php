@@ -1,16 +1,17 @@
 <?php
 
-require_once __DIR__ . '/src/Person.php';
-require_once __DIR__ . '/src/Student.php';
-require_once __DIR__ . '/src/GraduateStudent.php';
-require_once __DIR__ . '/src/StudentRepositoryInterface.php';
-require_once __DIR__ . '/src/StudentRepository.php';
+require_once __DIR__ . '/src/Models/Person.php';
+require_once __DIR__ . '/src/Models/Student.php';
+require_once __DIR__ . '/src/Models/GraduateStudent.php';
+require_once __DIR__ . '/src/Repositories/StudentRepositoryInterface.php';
+require_once __DIR__ . '/src/Repositories/StudentRepository.php';
+require_once __DIR__ . '/src/Exceptions/StudentNotFoundException.php';
+require_once __DIR__ . '/src/Services/StudentService.php';
 require_once __DIR__ . '/src/CliApp.php';
 
-// Initialize repository implementing StudentRepositoryInterface
+// Initialize repository, service, and CLI app
 $repository = new StudentRepository();
-
-// Inject repository into CLI application
-$app = new CliApp($repository);
+$service = new StudentService($repository);
+$app = new CliApp($service);
 
 $app->run();

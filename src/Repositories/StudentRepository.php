@@ -1,7 +1,7 @@
 <?php
 
-require_once __DIR__ . '/Student.php';
-require_once __DIR__ . '/GraduateStudent.php';
+require_once __DIR__ . '/../Models/Student.php';
+require_once __DIR__ . '/../Models/GraduateStudent.php';
 require_once __DIR__ . '/StudentRepositoryInterface.php';
 
 // StudentRepository implements the repository interface with in-memory storage
@@ -11,7 +11,6 @@ class StudentRepository implements StudentRepositoryInterface
 
     public function __construct()
     {
-        // In-memory array storage
         $this->students = [];
     }
 

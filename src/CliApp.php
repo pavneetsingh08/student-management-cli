@@ -1,17 +1,18 @@
 <?php
 
-require_once __DIR__ . '/Student.php';
-require_once __DIR__ . '/GraduateStudent.php';
-require_once __DIR__ . '/StudentRepositoryInterface.php';
+require_once __DIR__ . '/Models/Student.php';
+require_once __DIR__ . '/Models/GraduateStudent.php';
+require_once __DIR__ . '/Services/StudentService.php';
+require_once __DIR__ . '/Exceptions/StudentNotFoundException.php';
 
 // CliApp class to handle menu and user interactions
 class CliApp
 {
-    private StudentRepositoryInterface $repository;
+    private StudentService $service;
 
-    public function __construct(StudentRepositoryInterface $repository)
+    public function __construct(StudentService $service)
     {
-        $this->repository = $repository;
+        $this->service = $service;
     }
 
     public function run(): void
@@ -80,9 +81,12 @@ class CliApp
         $typeChoice = $this->prompt("Choose (1 or 2): ");
 
         $id = $this->promptRequired("Enter Student ID: ");
-        if ($this->repository->findById($id)) {
+        try {
+            $this->service->getStudentById($id);
             echo "Error: Student ID already exists." . PHP_EOL;
             return;
+        } catch (StudentNotFoundException $e) {
+            // ID is free to use
         }
 
         $name = $this->promptRequired("Enter Name: ");
@@ -97,7 +101,7 @@ class CliApp
             $student = new Student($id, $name, $email, $course, $grade);
         }
 
-        if ($this->repository->add($student)) {
+        if ($this->service->addStudent($student)) {
             echo "Student (" . $student->getType() . ") added successfully." . PHP_EOL;
         } else {
             echo "Failed to add student." . PHP_EOL;
@@ -107,7 +111,7 @@ class CliApp
     private function handleViewAllStudents(): void
     {
         echo "--- All Students ---" . PHP_EOL;
-        $students = $this->repository->getAll();
+        $students = $this->service->getAllStudents();
         $this->renderStudentTable($students);
     }
 
@@ -115,7 +119,7 @@ class CliApp
     {
         echo "--- Search Student ---" . PHP_EOL;
         $query = $this->promptRequired("Enter keyword (ID, Name, Course, or Topic): ");
-        $results = $this->repository->search($query);
+        $results = $this->service->searchStudents($query);
 
         if (empty($results)) {
             echo "No students found matching '$query'." . PHP_EOL;
@@ -130,10 +134,11 @@ class CliApp
     {
         echo "--- Update Student ---" . PHP_EOL;
         $id = $this->promptRequired("Enter Student ID to update: ");
-        $student = $this->repository->findById($id);
 
-        if (!$student) {
-            echo "Student not found." . PHP_EOL;
+        try {
+            $student = $this->service->getStudentById($id);
+        } catch (StudentNotFoundException $e) {
+            echo $e->getMessage() . PHP_EOL;
             return;
         }
 
@@ -167,33 +172,41 @@ class CliApp
             }
         }
 
-        $this->repository->update(
-            $id,
-            $name !== '' ? $name : null,
-            $email !== '' ? $email : null,
-            $course !== '' ? $course : null,
-            $grade,
-            $researchTopic
-        );
-
-        echo "Student updated successfully." . PHP_EOL;
+        try {
+            $this->service->updateStudent(
+                $id,
+                $name !== '' ? $name : null,
+                $email !== '' ? $email : null,
+                $course !== '' ? $course : null,
+                $grade,
+                $researchTopic
+            );
+            echo "Student updated successfully." . PHP_EOL;
+        } catch (StudentNotFoundException $e) {
+            echo $e->getMessage() . PHP_EOL;
+        }
     }
 
     private function handleDeleteStudent(): void
     {
         echo "--- Delete Student ---" . PHP_EOL;
         $id = $this->promptRequired("Enter Student ID to delete: ");
-        $student = $this->repository->findById($id);
 
-        if (!$student) {
-            echo "Student not found." . PHP_EOL;
+        try {
+            $student = $this->service->getStudentById($id);
+        } catch (StudentNotFoundException $e) {
+            echo $e->getMessage() . PHP_EOL;
             return;
         }
 
         $confirm = strtolower($this->prompt("Are you sure you want to delete {$student->getName()}? (y/n): "));
         if ($confirm === 'y' || $confirm === 'yes') {
-            $this->repository->delete($id);
-            echo "Student deleted." . PHP_EOL;
+            try {
+                $this->service->deleteStudent($id);
+                echo "Student deleted." . PHP_EOL;
+            } catch (StudentNotFoundException $e) {
+                echo $e->getMessage() . PHP_EOL;
+            }
         } else {
             echo "Action cancelled." . PHP_EOL;
         }
@@ -202,7 +215,7 @@ class CliApp
     private function handleViewStatistics(): void
     {
         echo "--- Statistics ---" . PHP_EOL;
-        $stats = $this->repository->getStatistics();
+        $stats = $this->service->getStatistics();
 
         echo "Total Students    : " . $stats['total'] . PHP_EOL;
         echo "Regular Students  : " . $stats['regularCount'] . PHP_EOL;
